@@ -1,6 +1,7 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
 import datetime
 import json
+from pandas.io.json import json_normalize
 from pymongo import MongoClient
 import os
 import requests
@@ -52,7 +53,7 @@ def get_all_top_games_v5(header, print_progress=False):
 
 def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
                              save_local=True, send_mongo=True,
-                             lightweight=True, print_progress=False):
+                             lightweight=True, flatten = True, print_progress=False):
     """
     Main job to be passed to the scheduler function, not much sense in running it on its own.
     The function collects data from Twitch, removes duplicates, adds a field with a uniformed name,
@@ -109,6 +110,9 @@ def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
     d['timestamp'] = str(now)
     d['data'] = games_no_dup
 
+    if flatten:
+        d['data'] = json_normalize(d['data'], sep='_').to_dict(orient='records')
+
     if save_local:
         # store dict
         # since the file can get big, this way of updating it should be efficient memory-wise (or so I have read)
@@ -126,7 +130,8 @@ def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
 
 
 def twitch_collector_scheduler(twitch_header, mongocoll, save_local=True, send_mongo=True,
-                               trigger='interval', seconds=30, lightweight=True, print_progress=False):
+                               trigger='interval', seconds=30, lightweight=True, flatten=True,
+                               print_progress=False):
     """
     1. Creates the empty files where the data will be stored;
     2. Schedules how often the function collect_and_store_once should be run.
@@ -155,7 +160,7 @@ def twitch_collector_scheduler(twitch_header, mongocoll, save_local=True, send_m
     scheduler = BlockingScheduler()
     scheduler.add_job(collect_from_twitch_once,
                       args=[twitch_header, mongocoll, output_data_filename,
-                            save_local, send_mongo, lightweight, print_progress],
+                            save_local, send_mongo, lightweight, flatten, print_progress],
                       trigger=trigger,
                       seconds=seconds,
                       max_instances=10,
@@ -187,4 +192,4 @@ if __name__ == "__main__":
     games_coll = db.games
 
     twitch_collector_scheduler(header_v5, games_coll, seconds=180,
-                               save_local=True, send_mongo=True, print_progress=True)
+                               save_local=True, send_mongo=True, flatten=True, print_progress=True)
