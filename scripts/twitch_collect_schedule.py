@@ -1,17 +1,58 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
-from ast import literal_eval
 import datetime
 import json
+from pymongo import MongoClient
 import os
+import requests
 
-# module with function for collecting raw game data
-import twitch
 # module with functions for uniforming game names, possibly to use later for integration
 import uniformer
 
 
-def collect_and_store_once(twitch_header, output_data_filename,
-                           output_names_filename, lightweight=True, print_progress=False):
+def get_all_top_games_v5(header, print_progress=False):
+    """
+    Collects data about games streamed on Twitch
+
+    :param header: header for twitch APIs requests, including client ID
+    :param print_progress: if set to True it prints the progress
+    :returns list of all games streamed on Twitch, sorted by viewers
+    """
+    responses = []  # list of games
+
+    # first request
+    res = requests.get('https://api.twitch.tv/kraken/games/top?limit=100', headers=header)
+    responses.extend(res.json()['top'])
+
+    games_processed = len(res.json()['top'])
+
+    # ask for games until there are no games left (in which case, the twitch api returns an error)
+    # essentially, it loops requests until twitch returns an error, in which case the loops breaks
+    # not the best solution, but I do not know if there is a better way to do this
+    while True:
+        try:
+            res = requests.get('https://api.twitch.tv/kraken/games/top?limit=100&offset={}'.format(len(responses)),
+                               headers=header)
+            responses.extend(res.json()['top'])
+
+            games_processed += len(res.json()['top'])
+
+            if print_progress:
+                print('Games processed: {}'.format(games_processed))
+
+        except Exception:
+            try:
+                if res.json()['error'] == 'Bad Request':
+                    print('Done collecting!')
+                    break
+            except Exception:
+                pass
+
+    return responses
+
+
+def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
+                             save_local=True, send_mongo=True,
+                             lightweight=True, print_progress=False):
     """
     Main job to be passed to the scheduler function, not much sense in running it on its own.
     The function collects data from Twitch, removes duplicates, adds a field with a uniformed name,
@@ -22,8 +63,10 @@ def collect_and_store_once(twitch_header, output_data_filename,
     The file saved at output_names_filename will contain the names of the games collected (without duplicates)
 
     :param twitch_header: header for the Twitch APIs requests
+    :param mongocoll: the mongo collection where the data should be sent, if send mongo=True
     :param output_data_filename: path to an already existing empty file
-    :param output_names_filename: path to an already existing empty file
+    :param save_local: if Rrue, saves a copy of the data collected on twitch on disk
+    :param send_mongo: if True, sends data collected from twitch to mongo collection
     :param lightweight: if true, some fields from the collected data are deleted
     :param print_progress: if True, prints the progress
     :return: nothing
@@ -34,7 +77,7 @@ def collect_and_store_once(twitch_header, output_data_filename,
         print('Job started at {}\n'.format(now))
 
     # collect games
-    games = twitch.get_all_top_games_v5(twitch_header, print_progress)
+    games = get_all_top_games_v5(twitch_header, print_progress)
 
     # remove duplicates, i.e. items with the same name (same game collected twice)
     # keeps the later element
@@ -44,15 +87,14 @@ def collect_and_store_once(twitch_header, output_data_filename,
     # add fields for uniformed names
     for i in range(len(games_no_dup)):
         norm_name = uniformer.uniform(games_no_dup[i]['game']['name'])
-        norm_unary_name = uniformer.silly_uniform(games_no_dup[i]['game']['name'])
         games_no_dup[i]['game']['norm_name'] = norm_name
-        games_no_dup[i]['game']['unary_name'] = norm_unary_name
 
     # removes some fields if lightweight is set to True
     if lightweight:
         for item in games_no_dup:
             try:
                 del item['game']['locale']
+                del item['game']['localized_name']
                 del item['game']['box']['small']
                 del item['game']['box']['medium']
                 del item['game']['box']['template']
@@ -67,35 +109,24 @@ def collect_and_store_once(twitch_header, output_data_filename,
     d['timestamp'] = str(now)
     d['data'] = games_no_dup
 
-    # store dict
-    # since the file can get big, this way of updating it should be efficient memory-wise (or so I have read)
-    with open(output_data_filename, "a") as json_file:
-        json_file.write("{}\n".format(json.dumps(d)))
+    if save_local:
+        # store dict
+        # since the file can get big, this way of updating it should be efficient memory-wise (or so I have read)
+        with open(output_data_filename, "a") as json_file:
+            json_file.write("{}\n".format(json.dumps(d)))
 
-    # store names of games
-    # the file containing the names of games is not very big (less then 100KB), so loading it should not be a problem
-    # TODO: is there a better way?
-    games_set = {games_no_dup[i]['game']['norm_name'] for i in range(len(games_no_dup))}
-
-    with open(output_names_filename, 'r', encoding='utf8') as f:
-        content = f.read()
-
-    if content == '':
-        content = set(content)
-    else:
-        content = set(literal_eval(content))
-
-    content = games_set | content
-
-    with open(output_names_filename, 'w', encoding='utf8') as f:
-        f.write(str(list(content)))
+    if send_mongo:
+        post_id = mongocoll.insert_one(d).inserted_id
 
     if print_progress:
         now = datetime.datetime.utcnow()
+        if send_mongo:
+            print('Sent to Mongo: {}'.format(post_id))
         print('Job completed at {}\n'.format(now))
 
 
-def twitch_collector_scheduler(twitch_header, trigger='interval', seconds=30, lightweight=True, print_progress=False):
+def twitch_collector_scheduler(twitch_header, mongocoll, save_local=True, send_mongo=True,
+                               trigger='interval', seconds=30, lightweight=True, print_progress=False):
     """
     1. Creates the empty files where the data will be stored;
     2. Schedules how often the function collect_and_store_once should be run.
@@ -103,29 +134,31 @@ def twitch_collector_scheduler(twitch_header, trigger='interval', seconds=30, li
     TODO: implement better using more options given by Apscheduler, now it only uses the interval and seconds parameters
 
     :param twitch_header: header for the Twitch APIs requests
+    :param mongocoll: the mongo collection where the data should be sent, if send mongo=True
+    :param save_local: if Rrue, saves a copy of the data collected on twitch on disk
+    :param send_mongo: if True, sends data collected from twitch to mongo collection
     :param trigger: type of trigger, defaults to interval
     :param seconds: wait between each function call
     :param lightweight: if true, some fields from the collected data are deleted
     :param print_progress: if True, prints the progress
     """
+
     utcnow = str(datetime.datetime.utcnow().strftime("%Y%m%d_%H%M"))
     output_data_filename = '{}_data.json'.format(utcnow)
-    output_names_filename = '{}_names.txt'.format(utcnow)
-
-    # create empty files to update later
-    open(output_data_filename, 'a').close()
-    open(output_names_filename, 'a').close()
-
+    if save_local:
+        # create empty file to update later
+        open(output_data_filename, 'a').close()
 
     if print_progress:
         print('Script started at: {}\n'.format(datetime.datetime.utcnow()))
 
     scheduler = BlockingScheduler()
-    scheduler.add_job(collect_and_store_once,
-                      args=[twitch_header, output_data_filename,
-                            output_names_filename, lightweight, print_progress],
+    scheduler.add_job(collect_from_twitch_once,
+                      args=[twitch_header, mongocoll, output_data_filename,
+                            save_local, send_mongo, lightweight, print_progress],
                       trigger=trigger,
                       seconds=seconds,
+                      max_instances=10,
                       next_run_time=datetime.datetime.now())
     print('Press Ctrl+{0} to exit'.format('Break' if os.name == 'nt' else 'C'))
 
@@ -137,6 +170,8 @@ def twitch_collector_scheduler(twitch_header, trigger='interval', seconds=30, li
 
 if __name__ == "__main__":
 
+    # the 'keys.json' file should be in the same folder as this script.
+    # otherwise change the following line with the correct location
     filename = "keys.json"
     with open(filename) as file:
         keys = json.loads(file.read())
@@ -147,4 +182,9 @@ if __name__ == "__main__":
         'Client-ID': twitch_client_ID,
     }
 
-    twitch_collector_scheduler(header_v5, print_progress=True)
+    client = MongoClient('localhost', 27017)
+    db = client.twitchtest
+    games_coll = db.games
+
+    twitch_collector_scheduler(header_v5, games_coll, seconds=180,
+                               save_local=True, send_mongo=True, print_progress=True)
