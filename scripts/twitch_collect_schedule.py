@@ -7,7 +7,7 @@ import os
 import requests
 
 # module with functions for uniforming game names, possibly to use later for integration
-import uniformer
+#import uniformer
 
 
 def get_all_top_games_v5(header, print_progress=False):
@@ -87,7 +87,7 @@ def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
 
     # add fields for uniformed names
     for i in range(len(games_no_dup)):
-        norm_name = uniformer.uniform(games_no_dup[i]['game']['name'])
+        norm_name = games_no_dup[i]['game']['name'].lower()
         games_no_dup[i]['game']['norm_name'] = norm_name
 
     # removes some fields if lightweight is set to True
@@ -187,8 +187,8 @@ if __name__ == "__main__":
         'Client-ID': twitch_client_ID,
     }
 
-    client = MongoClient('localhost', 27017)
-    db = client.twitchtest
+    client = MongoClient('localhost', 27017) #Insert the IP of the VM
+    db = client.twitch
     games_coll = db.games
 
     twitch_collector_scheduler(header_v5, games_coll, seconds=180,
