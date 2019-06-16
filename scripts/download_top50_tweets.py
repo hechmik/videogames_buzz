@@ -25,7 +25,7 @@ with open(config['top_50_games_fn'], "r") as filehandler:
 logging.info('Loaded top_50_games file')
 games_list = top50['selected_top_50_games']['name']
 collect_and_store_tweets.download_and_store_tweets_on_default_mongodb_instance(keys_filename=config['keys_fn'],
-                                                      list_of_queries=games_list[0:2],
+                                                      list_of_queries=games_list,
                                                       since_date=config['start_date'],
                                                       until_date=config['end_date'],
                                                       ip_mongo=config['ip_mongo'],
