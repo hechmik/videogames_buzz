@@ -16,7 +16,7 @@ def load_twitter_credentials(keys_filename):
         consumer_secret = api_twitter['Twitter']["consumer_secret"]
         access_token = api_twitter['Twitter']["access_token"]
         access_secret = api_twitter['Twitter']["access_secret"]
-        logging.info("{}-{}-{}-{}".format(consumer_key, consumer_secret, access_token, access_secret))
+        logging.debug("{}-{}-{}-{}".format(consumer_key, consumer_secret, access_token, access_secret))
         return consumer_key, consumer_secret, access_token, access_secret
 
 
