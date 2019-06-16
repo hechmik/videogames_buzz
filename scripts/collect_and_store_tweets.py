@@ -55,7 +55,7 @@ def collect_and_store_tweets_from_query(api, query, since_date, until_date, mong
                            until=until_date).items()
     logging.info("Downloaded tweets for \"{}\" query".format(query))
     for tweet in tweets:
-        logging.info("Tweet_date: {}".format(weet.created_at))
+        logging.info("Tweet_date: {}".format(tweet.created_at))
         filtered_tweet = {
             "query": query,
             "text": tweet.text,
