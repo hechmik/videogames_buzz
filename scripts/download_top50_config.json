@@ -1,0 +1,8 @@
+{
+  "keys_fn": "/Users/kappa/repositories/unimib/data_management/keys.json",
+  "top_50_games_fn": "/Users/kappa/repositories/unimib/data_management/top_50_games_to_monitor.json",
+  "start_date": "2019-06-12",
+  "end_date": "2019-06-15",
+  "ip_mongo": "localhost",
+  "mongo_port": 27017
+}

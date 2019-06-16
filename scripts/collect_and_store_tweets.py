@@ -55,7 +55,7 @@ def collect_and_store_tweets_from_query(api, query, since_date, until_date, mong
                            until=until_date).items()
     logging.info("Downloaded tweets for \"{}\" query".format(query))
     for tweet in tweets:
-        logging.debug("Username: {}".format(tweet.user.name))
+        logging.info("Tweet_date: {}".format(weet.created_at))
         filtered_tweet = {
             "query": query,
             "text": tweet.text,
@@ -115,6 +115,3 @@ def download_and_store_tweets_on_default_mongodb_instance(keys_filename,
     tweet_games = db.game_tweets
     download_and_store_tweets_on_mongodb(tweepy_api, list_of_queries, since_date, until_date, tweet_games)
     logging.info("download_and_store_tweets_on_default_mongodb_instance <<<")
-
-
-
