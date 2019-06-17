@@ -28,6 +28,6 @@ collect_and_store_tweets.download_and_store_tweets_on_default_mongodb_instance(k
                                                       list_of_queries=games_list,
                                                       since_date=config['start_date'],
                                                       until_date=config['end_date'],
-                                                      ip_mongo=config['ip_mongo'],
+                                                      mongo_ip=config['ip_mongo'],
                                                       mongo_port=config['mongo_port'])
 logging.info('Finished, good bye :) !')

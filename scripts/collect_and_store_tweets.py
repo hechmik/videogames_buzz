@@ -1,7 +1,11 @@
 from pymongo import MongoClient
+from pymongo.errors import PyMongoError
 import tweepy
 import json
 import logging
+from time import sleep
+from random import randint, random
+
 
 
 def load_twitter_credentials(keys_filename):
@@ -32,12 +36,16 @@ def twitter_api_setup(consumer_key, consumer_secret, access_token, access_secret
     logging.info("twitter_api_setup >>>")
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_secret)
-    api = tweepy.API(auth, wait_on_rate_limit=True)
+    api = tweepy.API(auth,
+                     wait_on_rate_limit=True,
+                     wait_on_rate_limit_notify=True,
+                     retry_count=1000,
+                     retry_delay=60)
     logging.info("twitter_api_setup <<<")
     return api
 
 
-def collect_and_store_tweets_from_query(api, query, since_date, until_date, mongo_collection):
+def collect_and_store_tweets_from_query(api, query, since_date, until_date, mongo_collection, number_of_tweets = 200):
     """
     Download all the tweets related to the given query in the selected timerange.
     Store the results on the selected MongoDB collection
@@ -46,28 +54,47 @@ def collect_and_store_tweets_from_query(api, query, since_date, until_date, mong
     :param since_date:
     :param until_date:
     :param mongo_collection:
+    :param number_of_tweets:
     :return:
     """
+    backoff_counter = 1
     logging.info("collect_and_store_tweets_from_query >>>")
     tweets = tweepy.Cursor(api.search,
-                           q=query,
+                           q="{} -filter:retweets".format(query), #for reducing the number of calls
                            since=since_date,
-                           until=until_date).items()
-    logging.info("Downloaded tweets for \"{}\" query".format(query))
-    for tweet in tweets:
-        logging.info("Tweet_date: {}".format(tweet.created_at))
-        filtered_tweet = {
-            "query": query,
-            "text": tweet.text,
-            "language": tweet.lang,
-            "date": tweet.created_at,
-            "username": tweet.user.name,
-            "user_followers": tweet.user.followers_count,
-            "user_location": tweet.user.location,
-            "retweets": tweet.retweet_count,
-            "likes": tweet.favorite_count,
-        }
-        mongo_collection.insert_one(filtered_tweet)
+                           until=until_date,
+                           result_type="mixed" # in this way we are sure to collect all the popular tweets + some others
+                           ).items(number_of_tweets)
+
+    while True:
+        try:
+            tweet = tweets.next()
+
+            logging.info("Query: {}, Tweet_date: {}".format(query, tweet.created_at))
+            filtered_tweet = {
+                "query": query,
+                "text": tweet.text,
+                "language": tweet.lang,
+                "date": tweet.created_at,
+                "username": tweet.user.name,
+                "user_followers": tweet.user.followers_count,
+                "user_location": tweet.user.location,
+                "retweets": tweet.retweet_count,
+                "likes": tweet.favorite_count,
+            }
+            mongo_collection.insert_one(filtered_tweet)
+        except StopIteration:
+            logging.info("Finished collecting and storing tweets for {}".format(query))
+            break
+        except PyMongoError:
+            logging.error("Error on writing on MongoDB", exc_info=True)
+        except tweepy.TweepError:
+            logging.info("Reached Tweet limits, waiting for {} seconds".format(60 * backoff_counter))
+            sleep(60 * backoff_counter)
+            backoff_counter += 1
+            continue
+
+
     logging.info("collect_and_store_tweets_from_query <<<")
 
 
@@ -86,6 +113,7 @@ def download_and_store_tweets_on_mongodb(api, list_of_queries, since_date, until
     for query in list_of_queries:
         logging.info("Working on: {}".format(query))
         collect_and_store_tweets_from_query(api, query, since_date, until_date, mongodb_collection)
+        sleep(randint(30, 120))
     logging.info("download_and_store_tweets_on_mongodb <<<")
 
 
@@ -93,7 +121,7 @@ def download_and_store_tweets_on_default_mongodb_instance(keys_filename,
                                                           list_of_queries,
                                                           since_date,
                                                           until_date,
-                                                          ip_mongo,
+                                                          mongo_ip,
                                                           mongo_port):
     """
     This is the library main function.
@@ -103,14 +131,14 @@ def download_and_store_tweets_on_default_mongodb_instance(keys_filename,
     :param list_of_queries: list of strings that represents all the queries you're interested in downloading and storing
     :param since_date: starting date for downloading tweets in the format "YYYY-MM-DD"
     :param until_date: ending date for downloading tweets in the format "YYYY-MM-DD"
-    :param ip_mongo: string that represents
+    :param mongo_ip: string that represents
     :param mongo_port:
     :return:
     """
     logging.info("download_and_store_tweets_on_default_mongodb_instance >>>")
     consumer_key, consumer_secret, access_token, access_secret = load_twitter_credentials(keys_filename)
     tweepy_api = twitter_api_setup(consumer_key, consumer_secret, access_token, access_secret)
-    client = MongoClient(ip_mongo, mongo_port)
+    client = MongoClient(mongo_ip, mongo_port)
     db = client.twitter
     tweet_games = db.game_tweets
     download_and_store_tweets_on_mongodb(tweepy_api, list_of_queries, since_date, until_date, tweet_games)
