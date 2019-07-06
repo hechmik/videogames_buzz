@@ -7,7 +7,7 @@ import os
 import requests
 
 # module with functions for uniforming game names, possibly to use later for integration
-#import uniformer
+import uniformer
 
 
 def get_all_top_games_v5(header, print_progress=False):
@@ -87,7 +87,7 @@ def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
 
     # add fields for uniformed names
     for i in range(len(games_no_dup)):
-        norm_name = games_no_dup[i]['game']['name'].lower()
+        norm_name = uniformer.uniform(games_no_dup[i]['game']['name'])
         games_no_dup[i]['game']['norm_name'] = norm_name
 
     # removes some fields if lightweight is set to True
@@ -136,7 +136,7 @@ def twitch_collector_scheduler(twitch_header, mongocoll, save_local=True, send_m
     1. Creates the empty files where the data will be stored;
     2. Schedules how often the function collect_and_store_once should be run.
 
-    TODO: implement better using more options given by Apscheduler, now it only uses the interval and seconds parameters
+    TODO: implement using more options given by Apscheduler, now it only uses the interval and seconds parameters
 
     :param twitch_header: header for the Twitch APIs requests
     :param mongocoll: the mongo collection where the data should be sent, if send mongo=True
@@ -187,9 +187,9 @@ if __name__ == "__main__":
         'Client-ID': twitch_client_ID,
     }
 
-    client = MongoClient('localhost', 27017) #Insert the IP of the VM
-    db = client.twitch
-    games_coll = db.games
+    client = MongoClient('localhost', 27017)
+    db = client.dm_project
+    games_coll = db.twitch
 
     twitch_collector_scheduler(header_v5, games_coll, seconds=180,
                                save_local=True, send_mongo=True, flatten=True, print_progress=True)
