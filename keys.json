@@ -1,14 +1,17 @@
 {  
    "Twitch": {  
-      "Client-ID" : " "
+      "Client-ID" : ""
    },
    "Twitter": {  
-	  "consumer_key" : " ",
-      "consumer_secret" : " ",
-      "access_token" : " ",
-      "access_secret" : " "
+	  "consumer_key" : "",
+      "consumer_secret" : "",
+      "access_token" : "",
+      "access_secret" : ""
    },
-   "Youtube": {
-	  "Key" : " "
+   "SSH": {
+		"MONGO_HOST" : "",
+		"MONGO_DB" : "",
+		"MONGO_USER" : "",
+		"MONGO_PASS" : ""
    }
 }
