@@ -187,7 +187,7 @@ if __name__ == "__main__":
         'Client-ID': twitch_client_ID,
     }
 
-    client = MongoClient('localhost', 27017)
+    client = MongoClient('10.9.13.14', 27017)
     db = client.dm_project
     games_coll = db.twitch
 
