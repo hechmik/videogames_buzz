@@ -1,3 +1,10 @@
+﻿"""
+This module is needed to transform some names on data downloaded from Twitch and VGChartz in order to make integration
+easier. Some games on VGChartz have wrong roman numbers (e.g. Call of Duty Black Ops IIII), hence the need of the
+'silly_replace_with_roman' function (which is to be applied to twitch game names).
+"""
+
+
 def silly_replace_with_roman(string):
     """
     Finds arabic numbers in string and replaces them with unary notation
@@ -37,12 +44,12 @@ def arabic_to_roman(num):
         [  10, 'X'], [  9, 'IX'], [  5, 'V'], [  4, 'IV'],
         [   1, 'I']]
     roman = ''
-    i = 0  # initiate i = 0
+    i = 0
     while num > 0:
             while conv[i][0] > num:
-                i += 1  # increments i to largest value greater than current num
-            roman += conv[i][1]  # adds the roman numeral equivalent to string
-            num -= conv[i][0]  # decrements your num
+                i += 1
+            roman += conv[i][1]
+            num -= conv[i][0]
     return roman
 
 
@@ -72,7 +79,3 @@ def uniform(string):
     string = replace_with_roman(string)
     string = string.replace(':', '').lower()
     return string
-
-
-if __name__ == "__main__":
-    print(uniform('Ciao sono Gian Carlo, ho 19 anni, sono alto 0.134 metri, oggi è il 16 maggio 2019'))

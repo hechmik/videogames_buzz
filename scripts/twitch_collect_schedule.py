@@ -6,7 +6,7 @@ from pymongo import MongoClient
 import os
 import requests
 
-# module with functions for uniforming game names, possibly to use later for integration
+# module with functions for uniforming game names, to use for integration
 import uniformer
 
 
@@ -28,7 +28,7 @@ def get_all_top_games_v5(header, print_progress=False):
 
     # ask for games until there are no games left (in which case, the twitch api returns an error)
     # essentially, it loops requests until twitch returns an error, in which case the loops breaks
-    # not the best solution, but I do not know if there is a better way to do this
+    # not the best solution
     while True:
         try:
             res = requests.get('https://api.twitch.tv/kraken/games/top?limit=100&offset={}'.format(len(responses)),
@@ -55,10 +55,10 @@ def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
                              save_local=True, send_mongo=True,
                              lightweight=True, flatten = True, print_progress=False):
     """
-    Main job to be passed to the scheduler function, not much sense in running it on its own.
+    Main job to be passed to the scheduler function, not to be run on its own.
     The function collects data from Twitch, removes duplicates, adds a field with a uniformed name,
-    adds a filed with a 'silly' uniformed name, deletes some fields if lightweight = True,
-    adds a timestamp and updates the files with paths output_data_filename and output_names_filename.
+    adds a filed with a 'silly' uniformed name, deletes some fields if lightweight = True, flattens the data.game field
+    if flatten = True, adds a timestamp and updates the files with path 'output_data_filename'.
 
     The file saved at output_data_filename will contain the data collected from twitch, processed as described
     The file saved at output_names_filename will contain the names of the games collected (without duplicates)
@@ -66,9 +66,10 @@ def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
     :param twitch_header: header for the Twitch APIs requests
     :param mongocoll: the mongo collection where the data should be sent, if send mongo=True
     :param output_data_filename: path to an already existing empty file
-    :param save_local: if Rrue, saves a copy of the data collected on twitch on disk
+    :param save_local: if True, saves a copy of the data collected on twitch on disk
     :param send_mongo: if True, sends data collected from twitch to mongo collection
-    :param lightweight: if true, some fields from the collected data are deleted
+    :param lightweight: if True, some fields from the collected data are deleted
+    :param flatten: if True, the data.game field is flattened
     :param print_progress: if True, prints the progress
     :return: nothing
     """
@@ -115,11 +116,11 @@ def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
 
     if save_local:
         # store dict
-        # since the file can get big, this way of updating it should be efficient memory-wise (or so I have read)
         with open(output_data_filename, "a") as json_file:
             json_file.write("{}\n".format(json.dumps(d)))
 
     if send_mongo:
+        # insert document into collection
         post_id = mongocoll.insert_one(d).inserted_id
 
     if print_progress:
@@ -140,11 +141,12 @@ def twitch_collector_scheduler(twitch_header, mongocoll, save_local=True, send_m
 
     :param twitch_header: header for the Twitch APIs requests
     :param mongocoll: the mongo collection where the data should be sent, if send mongo=True
-    :param save_local: if Rrue, saves a copy of the data collected on twitch on disk
+    :param save_local: if True, saves a copy of the data collected on twitch on disk
     :param send_mongo: if True, sends data collected from twitch to mongo collection
     :param trigger: type of trigger, defaults to interval
     :param seconds: wait between each function call
-    :param lightweight: if true, some fields from the collected data are deleted
+    :param lightweight: if True, some fields from the collected data are deleted
+    :param flatten: if True, the data.game field is flattened
     :param print_progress: if True, prints the progress
     """
 
@@ -187,6 +189,7 @@ if __name__ == "__main__":
         'Client-ID': twitch_client_ID,
     }
 
+    # VM's ip address
     client = MongoClient('10.9.13.14', 27017)
     db = client.dm_project
     games_coll = db.twitch
