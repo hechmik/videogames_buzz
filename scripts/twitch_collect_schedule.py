@@ -61,7 +61,6 @@ def collect_from_twitch_once(twitch_header, mongocoll, output_data_filename,
     if flatten = True, adds a timestamp and updates the files with path 'output_data_filename'.
 
     The file saved at output_data_filename will contain the data collected from twitch, processed as described
-    The file saved at output_names_filename will contain the names of the games collected (without duplicates)
 
     :param twitch_header: header for the Twitch APIs requests
     :param mongocoll: the mongo collection where the data should be sent, if send mongo=True
