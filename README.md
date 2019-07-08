@@ -10,5 +10,6 @@ In the "notebooks" folder there are four notebooks:
 - Notebook 01 demonstrates how to use the scripts for collecting data from Twitch and Twitter;
 - Notebook 02 shows the steps that led to the identification of 50 games to monitor;
 - Notebook 03 explores the data by querying the MongoDB.
+
 In order to run the scripts for downloading data from Twitch and Twitter, keys for the respective API's are needed. The "keys.json" file can be used to store them.
 
