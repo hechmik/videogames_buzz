@@ -3,7 +3,7 @@
 The gaming sector is no longer confined to local and online matches: social networks such as Twitch and Twitter are benefiting from the ever-growing success of the industry as they are the de facto virtual square where people from all around the world share their progress and discuss outstanding gameplay moves or the latest rumors.
 In this project we will try to measure and quantify the "buzz" around the most popular games of the past and present on these two social media, so that it will be possible to analyze in a data-driven way the popularity of the selected games. 
 
-# Running the code
+## Running the code
 The scripts for collecting data from Twitch, Twitter and VGChartz can be found in the "scripts" folder, while the collected data can be found in the "dataset" folder.
 In the "notebooks" folder there are four notebooks:
 - Notebook 00 is a guide on how to upload the data from the "dataset" folder on your own local MongoDB instance;
