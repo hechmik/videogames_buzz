@@ -139,7 +139,7 @@ def download_and_store_tweets_on_default_mongodb_instance(keys_filename,
     consumer_key, consumer_secret, access_token, access_secret = load_twitter_credentials(keys_filename)
     tweepy_api = twitter_api_setup(consumer_key, consumer_secret, access_token, access_secret)
     client = MongoClient(mongo_ip, mongo_port)
-    db = client.twitter
-    tweet_games = db.game_tweets
+    db = client.dm_project
+    tweet_games = db.twitter
     download_and_store_tweets_on_mongodb(tweepy_api, list_of_queries, since_date, until_date, tweet_games)
     logging.info("download_and_store_tweets_on_default_mongodb_instance <<<")
