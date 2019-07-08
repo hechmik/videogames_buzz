@@ -12,3 +12,7 @@ In the "notebooks" folder there are four notebooks:
 - Notebook 03 explores the data by querying the MongoDB.
 
 In order to run the scripts for downloading data from Twitch and Twitter, keys for the respective API's are needed. The "keys.json" file can be used to store them: the scripts and the notebooks will access this file in order to retrieve them.
+
+The script used for downloading the files, *download_top50_tweets.py*, needs the following files in the same directory:
+- *download_top50_config.json*, where parameters such as the path of Twitter credentials, the file containing the games that needs to be downloaded, time range of the tweets that you want to download and MongoDB's IP and Port needs to be specified
+- *collect_and_store_tweets.py*, that is the custom library for downloading and storing tweets
