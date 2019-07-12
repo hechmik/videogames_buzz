@@ -1,4 +1,4 @@
-# Data Management Project
+# Data Management & Visualization Project
 ## Popularity of videogames on Twitch and Twitter
 The gaming sector is no longer confined to local and online matches: social networks such as Twitch and Twitter are benefiting from the ever-growing success of the industry as they are the de facto virtual square where people from all around the world share their progress and discuss outstanding gameplay moves or the latest rumors.
 In this project we will try to measure and quantify the "buzz" around the most popular games of the past and present on these two social media, so that it will be possible to analyze in a data-driven way the popularity of the selected games. 
@@ -16,3 +16,6 @@ In order to run the scripts for downloading data from Twitch and Twitter, keys f
 The script used for downloading Twitter data, *download_top50_tweets.py*, needs the following files in the same directory:
 - *download_top50_config.json*, where parameters such as the path of Twitter credentials, the file containing the games that needs to be downloaded, time range of the tweets that you want to download and MongoDB's IP and Port needs to be specified
 - *collect_and_store_tweets.py*, that is the custom library for downloading and storing tweets
+
+## Visualization
+An infographic can be found at https://public.tableau.com/profile/gian.carlo.milanese#!/vizhome/VideogamesBuzz/Dashboard1
